@@ -1,0 +1,9 @@
+[build]
+  command = "node scripts/check-production-config.mjs && pnpm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Netlify automatically installs its Next.js adapter. This is a server-rendered
+# application, not a static HTML upload. Configure secrets in the dashboard.

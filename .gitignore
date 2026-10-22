@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env*
+!.env.example
+src/generated/
+coverage/
+*.tsbuildinfo
+data/uploads/
+.pnpm-store/
+.netlify/
+.vercel/
+backups/
+release/
+*.dump
+*.bak

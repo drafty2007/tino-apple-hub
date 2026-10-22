@@ -1,0 +1,16 @@
+import DeleteProductButton from "./delete-product-button";
+import Link from 'next/link';
+import { database } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
+import { formatMoney } from '@/lib/products';
+export default async function Products({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
+  const user = await requireAdmin();
+  const search = await searchParams;
+  const q = (search.q ?? '').slice(0, 100);
+  const page = Math.max(1, Math.min(10000, Math.floor(Number(search.page)) || 1));
+  const where = { ...(search.status === 'published' ? { archived: false } : search.status === 'archived' ? { archived: true } : {}), ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' as const } }, { brand: { contains: q, mode: 'insensitive' as const } }, { variants: { some: { sku: { contains: q, mode: 'insensitive' as const } } } }] } : {}) };
+  const [products, count] = await Promise.all([database().product.findMany({ where, include: { category: true, variants: { include: { inventory: true } } }, orderBy: { updatedAt: 'desc' }, take: 20, skip: (page - 1) * 20 }), database().product.count({ where })]);
+  return <><div className="admin-heading"><div><p className="eyebrow">Catalog</p><h1>Products</h1><p>{count} products · Manage your store’s collection.</p></div><Link className="button" href="/admin/products/new">+ Add product</Link></div><form className="admin-filters"><input aria-label="Search products" name="q" defaultValue={q} placeholder="Search name, brand or SKU…"/><select name="status" aria-label="Publication status" defaultValue={search.status ?? ''}><option value="">All products</option><option value="published">Published</option><option value="archived">Archived / unpublished</option></select><button className="secondary-button">Search</button></form><div className="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Price from</th><th>Available stock</th><th>Status</th><th>Actions</th></tr></thead><tbody>{products.map(p => <tr key={p.id}><td><strong>{p.name}</strong><small>{p.brand} · {p.variants.length} variants</small></td><td>{p.category.name}</td><td>{p.variants.length ? formatMoney(Math.min(...p.variants.map(v => v.discountPrice ?? v.price))) : '—'}</td><td>{p.variants.reduce((sum, v) => sum + (v.inventory ? v.inventory.quantity - v.inventory.reserved : 0), 0)}</td><td><span className={`badge ${p.archived ? '' : 'badge-green'}`}>{p.archived ? 'Unpublished' : 'Published'}</span></td><td><Link className="text-link" href={`/admin/products/${p.id}`}>Edit product</Link>{user.role === "OWNER" && <DeleteProductButton id={p.id} name={p.name} version={p.updatedAt.toISOString()}/>}</td></tr>)}</tbody></table>{!products.length && <div className="empty-state"><h2>No products found</h2><p>Add your first product or change your search.</p><Link className="button" href="/admin/products/new">Add product</Link></div>}</div><div className="pagination">{page > 1 && <Link href={{ pathname: '/admin/products', query: { q, status: search.status, page: page - 1 } }}>← Previous</Link>}<span>Page {page}</span>{page * 20 < count && <Link href={{ pathname: '/admin/products', query: { q, status: search.status, page: page + 1 } }}>Next →</Link>}</div></>;
+}
+
+

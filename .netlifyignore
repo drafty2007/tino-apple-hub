@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+.next
+.pnpm-store
+node_modules
+data
+backups
+release
+coverage
+*.dump
+*.bak
+*.zip
